@@ -56,48 +56,38 @@ def fill_holes(idmask, umask, vmask):
     return filled_id_mask, filled_u_mask, filled_v_mask
 
 
-def create_GT_masks(root_dir, background_dir, intrinsic_matrix, classes):
+def create_GT_masks(root_dir, background_dir, intrinsic_matrix,classes):
     """
     Helper function to create the Ground Truth ID,U and V masks
         Args:
         root_dir (str): path to the root directory of the dataset
-        background_dir(str): path to background images directory
+        background_dir(str): path t
         intrinsic_matrix (array): matrix containing camera intrinsics
-        classes(dict): dictionary containing class values
+        classes (dict) : dictionary containing classes and their ids
         Saves the masks to their respective directories
     """
     list_all_images = load_obj(root_dir + "all_images_adr")
     training_images_idx = load_obj(root_dir + "train_images_indices")
-    regex = re.compile(r'\d+')
     for i in range(len(training_images_idx)):
-        if i % 1000 == 0:
-            print(str(i) + "/" + str(len(training_images_idx)) + " finished!")
-        ID_mask_file = root_dir + \
-            "/ground_truth/IDmasks/color" + str(i) + ".png"
-        U_mask_file = root_dir + \
-            "/ground_truth/Umasks/color" + str(i) + ".png"
-        V_mask_file = root_dir + \
-            "/ground_truth/Vmasks/color" + str(i) + ".png"
-        background_adr = root_dir + \
-            "/changed_background/color" + str(i) + ".png"
-
-        # create ID, U, V masks
-        ID_mask = np.zeros((480, 640))
-        U_mask = np.zeros((480, 640))
-        V_mask = np.zeros((480, 640))
-        # read the background image
-        background_img = cv2.imread(background_dir +
-                                    random.choice(os.listdir(background_dir)))
-        background_img = cv2.resize(
-            background_img, (640, 480), interpolation=cv2.INTER_AREA)
-        # 3 objects in 1 background image to speed up training
-
         img_adr = list_all_images[training_images_idx[i]]
-        label = os.path.split(os.path.split(
-            os.path.dirname(img_adr))[0])[1]
+        label = os.path.split(os.path.split(os.path.dirname(img_adr))[0])[1]
+        regex = re.compile(r'\d+')
         idx = regex.findall(os.path.split(img_adr)[1])[0]
 
+        if i % 1000 == 0:
+            print(str(i) + "/" + str(len(training_images_idx)) + " finished!")
+
         image = cv2.imread(img_adr)
+        ID_mask = np.zeros((image.shape[0], image.shape[1]))
+        U_mask = np.zeros((image.shape[0], image.shape[1]))
+        V_mask = np.zeros((image.shape[0], image.shape[1]))
+
+        ID_mask_file = root_dir + label + \
+            "/ground_truth/IDmasks/color" + str(idx) + ".png"
+        U_mask_file = root_dir + label + \
+            "/ground_truth/Umasks/color" + str(idx) + ".png"
+        V_mask_file = root_dir + label + \
+            "/ground_truth/Vmasks/color" + str(idx) + ".png"
 
         tra_adr = root_dir + label + "/data/tra" + str(idx) + ".tra"
         rot_adr = root_dir + label + "/data/rot" + str(idx) + ".rot"
@@ -107,8 +97,7 @@ def create_GT_masks(root_dir, background_dir, intrinsic_matrix, classes):
         ptcld_file = root_dir + label + "/object.xyz"
         pt_cld_data = np.loadtxt(ptcld_file, skiprows=1, usecols=(0, 1, 2))
         ones = np.ones((pt_cld_data.shape[0], 1))
-        homogenous_coordinate = np.append(
-            pt_cld_data[:, : 3], ones, axis=1)
+        homogenous_coordinate = np.append(pt_cld_data[:, :3], ones, axis=1)
 
         # Perspective Projection to obtain 2D coordinates for masks
         homogenous_2D = intrinsic_matrix @ (
@@ -118,12 +107,16 @@ def create_GT_masks(root_dir, background_dir, intrinsic_matrix, classes):
         x_2d = np.clip(coord_2D[:, 0], 0, 639)
         y_2d = np.clip(coord_2D[:, 1], 0, 479)
         ID_mask[y_2d, x_2d] = classes[label]
-        if i % 100 == 0:  # change the background for 99 out of every 100 images
-            mpimg.imsave(background_adr, image)
-        else:
-            background_img[y_2d, x_2d, :] = [0, 0, 0]
+
+        if i % 100 != 0:  # change background for every 99/100 images
+            background_img_adr = background_dir + \
+                random.choice(os.listdir(background_dir))
+            background_img = cv2.imread(background_img_adr)
+            background_img = cv2.resize(
+                background_img, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_AREA)
             background_img[y_2d, x_2d, :] = image[y_2d, x_2d, :]
-            # save background image wth copy pasted
+            background_adr = root_dir + label + \
+                "/changed_background/color" + str(idx) + ".png"
             mpimg.imsave(background_adr, background_img)
 
         # Generate Ground Truth UV Maps
@@ -142,7 +135,6 @@ def create_GT_masks(root_dir, background_dir, intrinsic_matrix, classes):
         cv2.imwrite(ID_mask_file, ID_mask)
         mpimg.imsave(U_mask_file, U_mask, cmap='gray')
         mpimg.imsave(V_mask_file, V_mask, cmap='gray')
-
 
 
 def create_UV_XYZ_dictionary(root_dir):
@@ -174,12 +166,16 @@ def create_UV_XYZ_dictionary(root_dir):
 
 def dataset_dir_structure(root_dir):
 
-    os.mkdir(root_dir + "predicted_pose")
-    os.mkdir(root_dir + "ground_truth")
-    os.mkdir(root_dir + "ground_truth/IDmasks")
-    os.mkdir(root_dir + "ground_truth/Umasks")
-    os.mkdir(root_dir + "ground_truth/Vmasks")
-    os.mkdir(root_dir + "changed_background")
-    os.mkdir(root_dir + "pose_refinement")
-    os.mkdir(root_dir + "pose_refinement/real")
-    os.mkdir(root_dir + "pose_refinement/rendered")
+    classes = ['ape', 'benchviseblue', 'can', 'cat', 'driller', 'duck', 'glue', 'holepuncher',
+               'iron', 'lamp', 'phone', 'cam', 'eggbox']
+
+    for label in classes:  # create directories to store data
+        os.mkdir(root_dir + label + "/predicted_pose")
+        os.mkdir(root_dir + label + "/ground_truth")
+        os.mkdir(root_dir + label + "/ground_truth/IDmasks")
+        os.mkdir(root_dir + label + "/ground_truth/Umasks")
+        os.mkdir(root_dir + label + "/ground_truth/Vmasks")
+        os.mkdir(root_dir + label + "/changed_background")
+        os.mkdir(root_dir + label + "/pose_refinement")
+        os.mkdir(root_dir + label + "/pose_refinement/real")
+        os.mkdir(root_dir + label + "/pose_refinement/rendered")

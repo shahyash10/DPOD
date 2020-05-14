@@ -12,11 +12,11 @@ from torch.utils.data.sampler import SubsetRandomSampler
 
 from dataset_classes import LineMODDataset
 
-
 def train_correspondence_block(root_dir, classes, epochs=10):
 
     train_data = LineMODDataset(root_dir, classes=classes,
-                                transform=transforms.Compose([transforms.ToTensor()]))
+                                transform=transforms.Compose([transforms.ToTensor(),
+                                transforms.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0)]))
 
     batch_size = 4
     num_workers = 0

@@ -206,7 +206,7 @@ for i in range(len(testing_images_idx)):
     total_score += score
     if i == 5:
         break
-    print(i, "finished")
+    print(i, "finished, score: ",score)
 
 print("ADD Score for all testing images is: ",
       total_score/len(testing_images_idx))

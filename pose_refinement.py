@@ -14,17 +14,34 @@ from dataset_classes import PoseRefinerDataset
 from pose_refiner_architecture import Pose_Refiner
 
 
-def Matching_loss(pt_cld, true_pose, pred_pose):  # no. of points is always 3000
+def fetch_ptcld_data(root_dir, label, bs):
+    # detch pt cld data for batchsize
+    pt_cld_data = []
+    for i in range(bs):
+        obj = os.path.split(os.path.dirname(label[i]))[1]
+        obj_dir = root_dir + obj + "/object.xyz"
+        pt_cld = np.loadtxt(obj_dir, skiprows=1, usecols=(0, 1, 2))
+        index = np.random.choice(pt_cld.shape[0], 3000, replace=False)
+        pt_cld_data.append(pt_cld[index, :])
+    pt_cld_data = np.stack(pt_cld_data, axis=0)
+    return pt_cld_data
 
-    index = np.random.choice(pt_cld.shape[0], 3000, replace=False)
-    pt_cld_rand = pt_cld[index, :]
-    target = torch.tensor(pt_cld_rand) @ true_pose[0:3, 0:3] + torch.tensor(
-        [true_pose[0, 3], true_pose[1, 3], true_pose[2, 3]])
-    output = torch.tensor(pt_cld_rand) @ pred_pose[0:3, 0:3] + torch.tensor(
-        [pred_pose[0, 3], pred_pose[1, 3], pred_pose[2, 3]])
-    loss = (torch.abs(output - target)).sum()/3000
 
-    return loss
+def Matching_loss(pt_cld_rand, true_pose, pred_pose, bs):  # no. of points is always 3000
+
+    total_loss = 0
+    for i in range(0, bs):
+        pt_cld = pt_cld_rand[i, :, :].squeeze()
+        TP = true_pose[i, :, :].squeeze()
+        PP = pred_pose[i, :, :].squeeze()
+        target = torch.tensor(pt_cld) @ TP[0:3, 0:3] + torch.cat(
+            (TP[0, 3].view(-1, 1), TP[1, 3].view(-1, 1), TP[2, 3].view(-1, 1)), 1)
+        output = torch.tensor(pt_cld) @ PP[0:3, 0:3] + torch.cat(
+            (PP[0, 3].view(-1, 1), PP[1, 3].view(-1, 1), PP[2, 3].view(-1, 1)), 1)
+        loss = (torch.abs(output - target)).sum()/3000
+        total_loss += loss
+
+    return total_loss
 
 
 def train_pose_refinement(root_dir, classes, epochs=5):
@@ -35,7 +52,9 @@ def train_pose_refinement(root_dir, classes, epochs=5):
                                         transforms.Resize(size=(224, 224)),
                                         transforms.ToTensor(),
                                         transforms.Normalize([0.485, 0.456, 0.406], [
-                                                             0.229, 0.224, 0.225])
+                                                             0.229, 0.224, 0.225]),
+                                        transforms.ColorJitter(
+                                            brightness=0, contrast=0, saturation=0, hue=0)
                                     ]))
 
     pose_refiner = Pose_Refiner()
@@ -43,7 +62,7 @@ def train_pose_refinement(root_dir, classes, epochs=5):
     # freeze resnet
     # pose_refiner.feature_extractor[0].weight.requires_grad = False
 
-    batch_size = 1
+    batch_size = 4
     num_workers = 0
     valid_size = 0.2
     # obtain training indices that will be used for validation
@@ -70,7 +89,6 @@ def train_pose_refinement(root_dir, classes, epochs=5):
     n_epochs = epochs
 
     valid_loss_min = np.Inf  # track change in validation loss
-    outliers = 0
     for epoch in range(1, n_epochs+1):
 
         print("----- Epoch Number: ", epoch, "--------")
@@ -84,71 +102,58 @@ def train_pose_refinement(root_dir, classes, epochs=5):
         ###################
         pose_refiner.train()
         for label, image, rendered, true_pose, pred_pose in train_loader:
-            label = label[0]
-            pred_pose = pred_pose.squeeze()
-            true_pose = true_pose.squeeze()
             # move tensors to GPU
             image, rendered = image.cuda(), rendered.cuda()
             # clear the gradients of all optimized variables
             optimizer.zero_grad()
             # forward pass: compute predicted outputs by passing inputs to the model
-            xy, z, rot = pose_refiner(image, rendered, pred_pose)
+            xy, z, rot = pose_refiner(image, rendered, pred_pose, batch_size)
             # convert rot quarternion to rotational matrix
             rot[torch.isnan(rot)] = 1  # take care of NaN and inf values
             rot[rot == float("Inf")] = 1
             rot = torch.tensor(
                 (R.from_quat(rot.detach().cpu().numpy())).as_matrix())
             # update predicted pose
-            pred_pose[0:3, 0:3] = rot
-            pred_pose[0, 3] = xy[0]
-            pred_pose[1, 3] = xy[1]
-            pred_pose[2, 3] = z
+            pred_pose[:, 0:3, 0:3] = rot
+            pred_pose[:, 0, 3] = xy[:, 0]
+            pred_pose[:, 1, 3] = xy[:, 1]
+            pred_pose[:, 2, 3] = z.squeeze()
             # fetch point cloud data
-            ptcld_file = root_dir + label + "/object.xyz"
-            pt_cld = np.loadtxt(ptcld_file, skiprows=1, usecols=(0, 1, 2))
+            pt_cld = fetch_ptcld_data(root_dir, label, batch_size)
             # calculate the batch loss
-            loss = Matching_loss(pt_cld, true_pose, pred_pose)
-            if loss.item() < 1000:  # filter out the outliers
-                # backward pass: compute gradient of the loss with respect to model parameters
-                loss.backward()
-                # perform a single optimization step (parameter update)
-                optimizer.step()
-                # update training loss
-                train_loss += loss.item()
-            else:
-                outliers += 1
+            loss = Matching_loss(pt_cld, true_pose, pred_pose, batch_size)
+            # backward pass: compute gradient of the loss with respect to model parameters
+            loss.backward()
+            # perform a single optimization step (parameter update)
+            optimizer.step()
+            # update training loss
+            train_loss += loss.item()
+
         ######################
         # validate the model #
         ######################
         pose_refiner.eval()
         for label, image, rendered, true_pose, pred_pose in valid_loader:
-            label = label[0]
-            pred_pose = pred_pose.squeeze()
-            true_pose = true_pose.squeeze()
-            # move tensors to GPU 
+            # move tensors to GPU
             image, rendered = image.cuda(), rendered.cuda()
             # forward pass: compute predicted outputs by passing inputs to the model
-            xy, z, rot = pose_refiner(image, rendered, pred_pose)
+            xy, z, rot = pose_refiner(image, rendered, pred_pose, batch_size)
             rot[torch.isnan(rot)] = 1  # take care of NaN and inf values
             rot[rot == float("Inf")] = 1
             # convert R quarternion to rotational matrix
             rot = torch.tensor(
                 (R.from_quat(rot.detach().cpu().numpy())).as_matrix())
             # update predicted pose
-            pred_pose[0:3, 0:3] = rot
-            pred_pose[0, 3] = xy[0]
-            pred_pose[1, 3] = xy[1]
-            pred_pose[2, 3] = z
+            pred_pose[:, 0:3, 0:3] = rot
+            pred_pose[:, 0, 3] = xy[:, 0]
+            pred_pose[:, 1, 3] = xy[:, 1]
+            pred_pose[:, 2, 3] = z.squeeze()
             # fetch point cloud data
-            ptcld_file = root_dir + label + "/object.xyz"
-            pt_cld = np.loadtxt(ptcld_file, skiprows=1, usecols=(0, 1, 2))
+            pt_cld = fetch_ptcld_data(root_dir, label, batch_size)
             # calculate the batch loss
-            loss = Matching_loss(pt_cld, true_pose, pred_pose)
+            loss = Matching_loss(pt_cld, true_pose, pred_pose, batch_size)
             # update average validation loss
-            if loss.item() < 1000:
-                valid_loss += loss.item()
-            else:
-                outliers += 1
+            valid_loss += loss.item()
 
         # calculate average losses
         train_loss = train_loss/len(train_loader.sampler)
@@ -164,4 +169,3 @@ def train_pose_refinement(root_dir, classes, epochs=5):
                 valid_loss_min, valid_loss))
             torch.save(pose_refiner.state_dict(), 'pose_refiner.pt')
             valid_loss_min = valid_loss
-    print("Number of Outliers: ", outliers)

@@ -38,7 +38,7 @@ class LineMODDataset(Dataset):
         regex = re.compile(r'\d+')
         idx = regex.findall(os.path.split(img_adr)[1])[0]
         
-        if i % 2 == 0:  # read the image with changed background
+        if i % 100 != 0:  # read the image with changed background
             image = cv2.imread(self.root_dir + label +
                                "/changed_background/color" + str(idx) + ".png")
         else:
@@ -51,7 +51,6 @@ class LineMODDataset(Dataset):
         Vmask = cv2.imread(self.root_dir + label + "/ground_truth/Vmasks/color" +
                            str(idx) + ".png", cv2.IMREAD_GRAYSCALE)
         # resize the masks
-        IDmask = (IDmask/255)*self.classes[label]
         image = cv2.resize(
             image, (image.shape[1]//2, image.shape[0]//2), interpolation=cv2.INTER_AREA)
         IDmask = cv2.resize(
