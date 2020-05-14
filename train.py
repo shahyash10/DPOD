@@ -21,11 +21,12 @@ parser.add_argument("--root_dir", default="/home/jovyan/work/LineMOD_Dataset/",
                     help="path to dataset directory")
 parser.add_argument("--bgd_dir", default="/home/jovyan/work/val2017/",
                     help="path to background images dataset directory")
-parser.add_argument("--split", default=0.7, help="test:train split ratio")
+parser.add_argument("--split", default=0.3, help="train:test split ratio")
 args = parser.parse_args()
 
 root_dir = args.root_dir
 background_dir = args.bgd_dir
+
 # list_all_images = []
 # for root, dirs, files in os.walk(root_dir):
 #     for file in files:
@@ -34,13 +35,12 @@ background_dir = args.bgd_dir
 
 # save_obj(list_all_images, root_dir + "all_images_adr")
 
-# test_size = args.split
 # num_images = len(list_all_images)
 # indices = list(range(num_images))
 # np.random.seed(69)
 # np.random.shuffle(indices)
-# split = int(np.floor(test_size * num_images))
-# train_idx, test_idx = indices[split:], indices[:split]
+# split = int(np.floor(args.split * num_images))
+# train_idx, test_idx = indices[:split], indices[split:]
 
 # save_obj(train_idx, root_dir + "train_images_indices")
 # save_obj(test_idx, root_dir + "test_images_indices")
@@ -54,14 +54,14 @@ fy = 573.57043
 py = 242.04899
 intrinsic_matrix = np.array([[fx, 0, px], [0, fy, py], [0, 0, 1]])
 
-# print("------ Start creating ground truth ------")
-# create filled ground truth masks
-# create_GT_masks(root_dir, background_dir, intrinsic_matrix)
-# create_UV_XYZ_dictionary(root_dir)  # create UV - XYZ dictionaries
-# print("----- Finished creating ground truth -----")
-
 classes = {'ape': 1, 'benchviseblue': 2, 'cam': 3, 'can': 4, 'cat': 5, 'driller': 6,
            'duck': 7, 'eggbox': 8, 'glue': 9, 'holepuncher': 10, 'iron': 11, 'lamp': 12, 'phone': 13}
+
+print("------ Start creating ground truth ------")
+create_GT_masks(root_dir, background_dir, intrinsic_matrix, classes)
+create_UV_XYZ_dictionary(root_dir)  # create UV - XYZ dictionaries
+print("----- Finished creating ground truth -----")
+
 
 # print("------ Started training of the correspondence block ------")
 # train_correspondence_block(root_dir, classes, epochs=10)
@@ -76,6 +76,6 @@ classes = {'ape': 1, 'benchviseblue': 2, 'cam': 3, 'can': 4, 'cat': 5, 'driller'
 # print("----- Finished creating inputs for DL based pose refinement")
 
 
-print("----- Started training DL based pose refiner ------")
-train_pose_refinement(root_dir, classes, epochs=5)
-print("----- Finished training DL based pose refiner ------")
+# print("----- Started training DL based pose refiner ------")
+# train_pose_refinement(root_dir, classes, epochs=5)
+# print("----- Finished training DL based pose refiner ------")

@@ -11,8 +11,10 @@ class Pose_Refiner(nn.Module):
 
     def __init__(self):
         super(Pose_Refiner, self).__init__()
-        self.feature_extractor = nn.Sequential(*list(models.resnet18(pretrained=True,
-                                                                     progress=True).children())[:9])
+        self.feature_extractor_image = nn.Sequential(*list(models.resnet18(pretrained=True,
+                                                                           progress=True).children())[:9])
+        self.feature_extractor_rendered = nn.Sequential(*list(models.resnet18(pretrained=True,
+                                                                              progress=True).children())[:9])
         self.fc_xyhead_1 = nn.Linear(512, 253)
         self.fc_xyhead_2 = nn.Linear(256, 2)
         self.fc_zhead = nn.Sequential(nn.Linear(512, 256),
@@ -20,11 +22,11 @@ class Pose_Refiner(nn.Module):
         self.fc_Rhead_1 = nn.Linear(512, 252)
         self.fc_Rhead_2 = nn.Linear(256, 4)
 
-    def forward(self, image, idmask, pred_pose):
+    def forward(self, image, rendered, pred_pose):
         # extracting the feature vector f
-        f_image = torch.flatten(self.feature_extractor(image))
-        f_idmask = torch.flatten(self.feature_extractor(idmask))
-        f = f_image - f_idmask
+        f_image = torch.flatten(self.feature_extractor_image(image))
+        f_rendered = torch.flatten(self.feature_extractor_rendered(rendered))
+        f = f_image - f_rendered
 
         # Z refinement head
         z = self.fc_zhead(f)
