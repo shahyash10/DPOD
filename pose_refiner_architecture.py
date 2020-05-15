@@ -17,9 +17,12 @@ class Pose_Refiner(nn.Module):
         self.fc_xyhead_1 = nn.Linear(512, 253)
         self.fc_xyhead_2 = nn.Linear(256, 2)
         self.fc_zhead = nn.Sequential(nn.Linear(512, 256),
+                                      nn.ReLU(inplace=True),
                                       nn.Linear(256, 1))
         self.fc_Rhead_1 = nn.Linear(512, 252)
         self.fc_Rhead_2 = nn.Linear(256, 4)
+
+        self.relu_layer = nn.ReLU(inplace=True)
 
     def _initialize_weights(self):
         # weight initialization
@@ -51,14 +54,18 @@ class Pose_Refiner(nn.Module):
         f_image = self.feature_extractor_image(image)
         f_rendered = self.feature_extractor_rendered(rendered)
         f_image = f_image.view(bs, -1)
+        f_image = self.relu_layer(f_image)
         f_rendered = f_image.view(bs, -1)
+        f_rendered = self.relu_layer(f_rendered)
         f = f_image - f_rendered
+        f = self.relu_layer(f)
 
         # Z refinement head
         z = self.fc_zhead(f)
 
         # XY refinement head
         f_xy1 = self.fc_xyhead_1(f)
+        f_xy1 = self.relu_layer(f_xy1)
         x_pred = np.reshape(pred_pose[:, 0, 3], (bs, -1))
         y_pred = np.reshape(pred_pose[:, 1, 3], (bs, -1))
         f_xy1 = torch.cat((f_xy1, x_pred.float().cuda()), 1)
@@ -68,6 +75,7 @@ class Pose_Refiner(nn.Module):
 
         # Rotation head
         f_r1 = self.fc_Rhead_1(f)
+        f_r1 = self.relu_layer(f_r1)
         r = R.from_matrix(pred_pose[:, 0:3, 0:3])
         r = r.as_quat()
         r = np.reshape(r, (bs, -1))
