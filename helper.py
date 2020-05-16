@@ -75,16 +75,19 @@ def create_bounding_box(img, pose, pt_cld_data, intrinsic_matrix):
 
 
 def ADD_score(pt_cld, true_pose, pred_pose, diameter):
-
-    target = torch.tensor(pt_cld) @ true_pose[0:3, 0:3] + torch.tensor(
+    pred_pose[0:3, 0:3][np.isnan(pred_pose[0:3, 0:3])] = 1
+    pred_pose[:, 3][np.isnan(pred_pose[:, 3])] = 0
+    target = pt_cld @ true_pose[0:3, 0:3] + np.array(
         [true_pose[0, 3], true_pose[1, 3], true_pose[2, 3]])
-    output = torch.tensor(pt_cld) @ pred_pose[0:3, 0:3] + torch.tensor(
+    output = pt_cld @ pred_pose[0:3, 0:3] + np.array(
         [pred_pose[0, 3], pred_pose[1, 3], pred_pose[2, 3]])
-    avg_distance = (torch.abs(output - target)).sum()/pt_cld.shape[0]
+    #avg_distance = (torch.abs(output - target)).sum()/pt_cld.shape[0]
+    avg_distance = (np.linalg.norm(output - target))/pt_cld.shape[0]
     threshold = diameter * 0.1
     if avg_distance <= threshold:
         return 1
     else:
+        #print("Avg distance vs threshold: ", avg_distance, threshold)
         return 0
 
 

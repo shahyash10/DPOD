@@ -4,14 +4,14 @@ import cv2
 import torch
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+import pandas as pd
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import unet_model as UNET
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
-from helper import load_obj, ADD_score
+from helper import load_obj, ADD_score, save_obj
 from torchvision import transforms, utils
 from create_ground_truth import get_rot_tra
 from scipy.spatial.transform import Rotation as R
@@ -63,6 +63,12 @@ root_dir = args.root_dir
 
 classes = {'ape': 1, 'benchviseblue': 2, 'cam': 3, 'can': 4, 'cat': 5, 'driller': 6,
            'duck': 7, 'eggbox': 8, 'glue': 9, 'holepuncher': 10, 'iron': 11, 'lamp': 12, 'phone': 13}
+
+score_card = {'ape': 0, 'benchviseblue': 0, 'cam': 0, 'can': 0, 'cat': 0, 'driller': 0,
+              'duck': 0, 'eggbox': 0, 'glue': 0, 'holepuncher': 0, 'iron': 0, 'lamp': 0, 'phone': 0}
+
+instances = {'ape': 0, 'benchviseblue': 0, 'cam': 0, 'can': 0, 'cat': 0, 'driller': 0,
+             'duck': 0, 'eggbox': 0, 'glue': 0, 'holepuncher': 0, 'iron': 0, 'lamp': 0, 'phone': 0}
 
 transform = transforms.Compose([transforms.ToPILImage(mode=None),
                                 transforms.Resize(size=(224, 224)),
@@ -125,35 +131,35 @@ for i in range(len(testing_images_idx)):
     upred = torch.argmax(umask_pred, dim=1).squeeze().cpu()
     vpred = torch.argmax(vmask_pred, dim=1).squeeze().cpu()
     coord_2d = (temp == classes[label]).nonzero(as_tuple=True)
-
-    coord_2d = torch.cat((coord_2d[0].view(
-        coord_2d[0].shape[0], 1), coord_2d[1].view(coord_2d[1].shape[0], 1)), 1)
-    uvalues = upred[coord_2d[:, 0], coord_2d[:, 1]]
-    vvalues = vpred[coord_2d[:, 0], coord_2d[:, 1]]
-    dct_keys = torch.cat((uvalues.view(-1, 1), vvalues.view(-1, 1)), 1)
-    dct_keys = tuple(dct_keys.numpy())
-    dct = load_obj(root_dir + label + "/UV-XYZ_mapping")
-    mapping_2d = []
-    mapping_3d = []
-    for count, (u, v) in enumerate(dct_keys):
-        if (u, v) in dct:
-            mapping_2d.append(np.array(coord_2d[count]))
-            mapping_3d.append(dct[(u, v)])
-
-    # PnP needs atleast 6 unique 2D-3D correspondences to run
-    if len(mapping_2d) >= 6 or len(mapping_3d) >= 6:
-        _, rvecs, tvecs, inliers = cv2.solvePnPRansac(np.array(mapping_3d, dtype=np.float32),
-                                                      np.array(mapping_2d, dtype=np.float32), intrinsic_matrix, distCoeffs=None,
-                                                      iterationsCount=150, reprojectionError=1.0, flags=cv2.SOLVEPNP_P3P)
-        rot, _ = cv2.Rodrigues(rvecs, jacobian=None)
-        pred_pose = np.append(rot, tvecs, axis=1)
-
-    else:  # save an empty file
-        pred_pose = np.zeros((3, 4))
-
-    if len(coord_2d):
+    if coord_2d[0].nelement() != 0:  # label is detected in the image
         coord_2d = torch.cat((coord_2d[0].view(
             coord_2d[0].shape[0], 1), coord_2d[1].view(coord_2d[1].shape[0], 1)), 1)
+        uvalues = upred[coord_2d[:, 0], coord_2d[:, 1]]
+        vvalues = vpred[coord_2d[:, 0], coord_2d[:, 1]]
+        dct_keys = torch.cat((uvalues.view(-1, 1), vvalues.view(-1, 1)), 1)
+        dct_keys = tuple(dct_keys.numpy())
+        dct = load_obj(root_dir + label + "/UV-XYZ_mapping")
+        mapping_2d = []
+        mapping_3d = []
+        for count, (u, v) in enumerate(dct_keys):
+            if (u, v) in dct:
+                mapping_2d.append(np.array(coord_2d[count]))
+                mapping_3d.append(dct[(u, v)])
+
+        # PnP needs atleast 6 unique 2D-3D correspondences to run
+        if len(mapping_2d) >= 6 or len(mapping_3d) >= 6:
+            _, rvecs, tvecs, inliers = cv2.solvePnPRansac(np.array(mapping_3d, dtype=np.float32),
+                                                          np.array(mapping_2d, dtype=np.float32), intrinsic_matrix, distCoeffs=None,
+                                                          iterationsCount=150, reprojectionError=1.0, flags=cv2.SOLVEPNP_P3P)
+            rot, _ = cv2.Rodrigues(rvecs, jacobian=None)
+            pred_pose = np.append(rot, tvecs, axis=1)
+
+        else:  # save an empty file
+            pred_pose = np.zeros((3, 4))
+
+        # if len(coord_2d):
+        #     coord_2d = torch.cat((coord_2d[0].view(
+        #         coord_2d[0].shape[0], 1), coord_2d[1].view(coord_2d[1].shape[0], 1)), 1)
         min_x = coord_2d[:, 0].min()
         max_x = coord_2d[:, 0].max()
         min_y = coord_2d[:, 1].min()
@@ -176,37 +182,55 @@ for i in range(len(testing_images_idx)):
         rendered_img = transform(torch.as_tensor(
             rendered_img, dtype=torch.float32))
 
-    else:  # object not present in idmask prediction
-        obj_img = torch.zeros_like(test_img)
-        rendered_img = torch.zeros_like(
-            test_img)
+        # else:  # object not present in idmask prediction
+        #     obj_img = torch.zeros_like(test_img)
+        #     rendered_img = torch.zeros_like(
+        #         test_img)
 
-    if len(rendered_img.shape) != 4:
-        rendered_img = rendered_img.view(
-            1, rendered_img.shape[0], rendered_img.shape[1], rendered_img.shape[2])
+        if len(rendered_img.shape) != 4:
+            rendered_img = rendered_img.view(
+                1, rendered_img.shape[0], rendered_img.shape[1], rendered_img.shape[2])
 
-    if len(obj_img.shape) != 4:
-        obj_img = obj_img.view(
-            1, obj_img.shape[0], obj_img.shape[1],  obj_img.shape[2])
-    # pose refinement to get final output
-    xy, z, rot = pose_refiner(obj_img.float().cuda(),
-                              rendered_img.float().cuda(), pred_pose)
-    # convert R quarternion to rotational matrix
-    rot = torch.tensor((R.from_quat(rot.detach().cpu().numpy())).as_matrix())
-    # update predicted pose
-    pred_pose[0:3, 0:3] = rot
-    pred_pose[0, 3] = xy[0]
-    pred_pose[1, 3] = xy[1]
-    pred_pose[2, 3] = z
+        if len(obj_img.shape) != 4:
+            obj_img = obj_img.view(
+                1, obj_img.shape[0], obj_img.shape[1],  obj_img.shape[2])
+        pred_pose = (torch.from_numpy(pred_pose)).unsqueeze(0)
 
-    diameter = np.loadtxt(root_dir + label + "/distance.txt")
-    ptcld_file = root_dir + label + "/object.xyz"
-    pt_cld = np.loadtxt(ptcld_file, skiprows=1, usecols=(0, 1, 2))
-    score = ADD_score(pt_cld, true_pose, pred_pose, diameter)
-    total_score += score
-    if i == 5:
-        break
-    print(i, "finished, score: ",score)
+        # pose refinement to get final output
+        xy, z, rot = pose_refiner(obj_img.float().cuda(),
+                                  rendered_img.float().cuda(), pred_pose)
+        # convert R quarternion to rotational matrix
+        rot = (R.from_quat(rot.detach().cpu().numpy())).as_matrix()
+        pred_pose = pred_pose.squeeze().numpy()
+        # update predicted pose
+        xy = xy.squeeze()
+        pred_pose[0:3, 0:3] = rot
+        pred_pose[0, 3] = xy[0]
+        pred_pose[1, 3] = xy[1]
+        pred_pose[2, 3] = z
+
+        diameter = np.loadtxt(root_dir + label + "/distance.txt")
+        ptcld_file = root_dir + label + "/object.xyz"
+        pt_cld = np.loadtxt(ptcld_file, skiprows=1, usecols=(0, 1, 2))
+        score = ADD_score(pt_cld, true_pose, pred_pose, diameter)
+        total_score += score
+        score_card[label] += score
+
+    else:
+        score_card[label] += 0
+
+    instances[label] += 1
+    if i % 1000 == 0:
+        print("At ",i,"iteration, current score: ",total_score/(i+1))
 
 print("ADD Score for all testing images is: ",
       total_score/len(testing_images_idx))
+
+
+classes = ['ape', 'benchviseblue', 'can', 'cat', 'driller', 'duck', 'glue', 'holepuncher',
+           'iron', 'lamp', 'phone', 'cam', 'eggbox']
+
+for label in classes:  # create directories to store data
+    score_card[label] = (score_card[label]/instances[label]) * 100
+
+save_obj(score_card, root_dir + "score_breakdown")

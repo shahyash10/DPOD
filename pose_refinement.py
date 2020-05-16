@@ -18,8 +18,7 @@ def fetch_ptcld_data(root_dir, label, bs):
     # detch pt cld data for batchsize
     pt_cld_data = []
     for i in range(bs):
-        obj = os.path.split(os.path.dirname(label[i]))[1]
-        obj_dir = root_dir + obj + "/object.xyz"
+        obj_dir = root_dir + label[i] + "/object.xyz"
         pt_cld = np.loadtxt(obj_dir, skiprows=1, usecols=(0, 1, 2))
         index = np.random.choice(pt_cld.shape[0], 3000, replace=False)
         pt_cld_data.append(pt_cld[index, :])
@@ -27,9 +26,11 @@ def fetch_ptcld_data(root_dir, label, bs):
     return pt_cld_data
 
 
-def Matching_loss(pt_cld_rand, true_pose, pred_pose, bs):  # no. of points is always 3000
+# no. of points is always 3000
+def Matching_loss(pt_cld_rand, true_pose, pred_pose, bs, training=True):
 
-    total_loss = 0
+    total_loss = torch.tensor([0.])
+    total_loss.requires_grad = True
     for i in range(0, bs):
         pt_cld = pt_cld_rand[i, :, :].squeeze()
         TP = true_pose[i, :, :].squeeze()
@@ -38,8 +39,11 @@ def Matching_loss(pt_cld_rand, true_pose, pred_pose, bs):  # no. of points is al
             (TP[0, 3].view(-1, 1), TP[1, 3].view(-1, 1), TP[2, 3].view(-1, 1)), 1)
         output = torch.tensor(pt_cld) @ PP[0:3, 0:3] + torch.cat(
             (PP[0, 3].view(-1, 1), PP[1, 3].view(-1, 1), PP[2, 3].view(-1, 1)), 1)
-        loss = (torch.abs(output - target)).sum()/3000
-        total_loss += loss
+        loss = (torch.abs(output - target).sum())/3000
+        if loss < 100:
+            total_loss = total_loss + loss
+        else:  # so that loss isn't NaN
+            total_loss = total_loss + torch.tensor([100.])
 
     return total_loss
 
@@ -111,6 +115,9 @@ def train_pose_refinement(root_dir, classes, epochs=5):
             # convert rot quarternion to rotational matrix
             rot[torch.isnan(rot)] = 1  # take care of NaN and inf values
             rot[rot == float("Inf")] = 1
+            xy[torch.isnan(xy)] == 0
+            z[torch.isnan(z)] == 0
+
             rot = torch.tensor(
                 (R.from_quat(rot.detach().cpu().numpy())).as_matrix())
             # update predicted pose
@@ -139,7 +146,9 @@ def train_pose_refinement(root_dir, classes, epochs=5):
             # forward pass: compute predicted outputs by passing inputs to the model
             xy, z, rot = pose_refiner(image, rendered, pred_pose, batch_size)
             rot[torch.isnan(rot)] = 1  # take care of NaN and inf values
-            rot[rot == float("Inf")] = 1
+            rot[rot == float("Inf")] = 1            
+            xy[torch.isnan(xy)] == 0
+            z[torch.isnan(z)] == 0
             # convert R quarternion to rotational matrix
             rot = torch.tensor(
                 (R.from_quat(rot.detach().cpu().numpy())).as_matrix())

@@ -67,10 +67,16 @@ def initial_pose_estimation(root_dir, classes, intrinsic_matrix):
                                                           np.array(mapping_2d, dtype=np.float32), intrinsic_matrix, distCoeffs=None,
                                                           iterationsCount=150, reprojectionError=1.0, flags=cv2.SOLVEPNP_P3P)
             rot, _ = cv2.Rodrigues(rvecs, jacobian=None)
+            rot[np.isnan(rot)] = 1
+            tvecs[np.isnan(tvecs)] = 1
+            tvecs = np.where(-100 < tvecs, tvecs, np.array([-100.]))
+            tvecs = np.where(tvecs < 100, tvecs, np.array([100.]))
             rot_tra = np.append(rot, tvecs, axis=1)
             # save the predicted pose
             np.savetxt(adr, rot_tra)
         else:  # save a pose full of zeros
             outliers += 1
-            np.savetxt(adr, np.zeros((3, 4)))
-    print("Number of instances where PnP couldn't be used: ",outliers)
+            rot_tra = np.ones((3, 4))
+            rot_tra[:, 3] = 0
+            np.savetxt(adr, rot_tra)
+    print("Number of instances where PnP couldn't be used: ", outliers)

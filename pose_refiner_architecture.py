@@ -17,12 +17,12 @@ class Pose_Refiner(nn.Module):
         self.fc_xyhead_1 = nn.Linear(512, 253)
         self.fc_xyhead_2 = nn.Linear(256, 2)
         self.fc_zhead = nn.Sequential(nn.Linear(512, 256),
-                                      nn.ReLU(inplace=True),
+                                      nn.ReLU(),
                                       nn.Linear(256, 1))
         self.fc_Rhead_1 = nn.Linear(512, 252)
         self.fc_Rhead_2 = nn.Linear(256, 4)
 
-        self.relu_layer = nn.ReLU(inplace=True)
+        self.relu_layer = nn.ReLU()
 
     def _initialize_weights(self):
         # weight initialization
@@ -58,7 +58,6 @@ class Pose_Refiner(nn.Module):
         f_rendered = f_image.view(bs, -1)
         f_rendered = self.relu_layer(f_rendered)
         f = f_image - f_rendered
-        f = self.relu_layer(f)
 
         # Z refinement head
         z = self.fc_zhead(f)
@@ -80,7 +79,7 @@ class Pose_Refiner(nn.Module):
         r = r.as_quat()
         r = np.reshape(r, (bs, -1))
         f_r1 = torch.cat(
-            (f_r1, torch.from_numpy(r).float().squeeze().cuda()), 1)
+            (f_r1, torch.from_numpy(r).float().cuda()), 1)
         rot = self.fc_Rhead_2(f_r1)
 
         return xy, z, rot

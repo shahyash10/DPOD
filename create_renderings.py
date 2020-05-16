@@ -58,7 +58,7 @@ def create_refinement_inputs(root_dir, classes, intrinsic_matrix):
     train_data = LineMODDataset(root_dir, classes=classes,
                                 transform=transforms.Compose([transforms.ToTensor()]))
 
-    upsampled = nn.Upsample(size=[240, 320], mode='bilinear')
+    upsampled = nn.Upsample(size=[240, 320], mode='bilinear',align_corners=False)
 
     regex = re.compile(r'\d+')
     count = 0
