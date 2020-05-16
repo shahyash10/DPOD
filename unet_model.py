@@ -89,8 +89,6 @@ class UNet(nn.Module):
         self.down3 = Down(256, 512)
         factor = 2 if bilinear else 1
         self.down4 = Down(512, 1024//factor)
-        #self.down5 = Down(512, 1024)
-        # self.down6 = Down(1024,2048)
 
 
         #ID MASK

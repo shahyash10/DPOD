@@ -75,33 +75,19 @@ def create_bounding_box(img, pose, pt_cld_data, intrinsic_matrix,color=(0,0,255)
 
 
 def ADD_score(pt_cld, true_pose, pred_pose, diameter):
+    "Evaluation metric - ADD score"
     pred_pose[0:3, 0:3][np.isnan(pred_pose[0:3, 0:3])] = 1
     pred_pose[:, 3][np.isnan(pred_pose[:, 3])] = 0
     target = pt_cld @ true_pose[0:3, 0:3] + np.array(
         [true_pose[0, 3], true_pose[1, 3], true_pose[2, 3]])
     output = pt_cld @ pred_pose[0:3, 0:3] + np.array(
         [pred_pose[0, 3], pred_pose[1, 3], pred_pose[2, 3]])
-    #avg_distance = (torch.abs(output - target)).sum()/pt_cld.shape[0]
     avg_distance = (np.linalg.norm(output - target))/pt_cld.shape[0]
     threshold = diameter * 0.1
     if avg_distance <= threshold:
         return 1
     else:
-        #print("Avg distance vs threshold: ", avg_distance, threshold)
         return 0
 
 
-def compute_add_score(pts3d, diameter, pose_gt, pose_pred, percentage=0.1):
-    R_gt, t_gt = pose_gt
-    R_pred, t_pred = pose_pred
-    count = R_gt.shape[0]
-    mean_distances = np.zeros((count,), dtype=np.float32)
-    for i in range(count):
-        pts_xformed_gt = R_gt[i] * pts3d.transpose() + t_gt[i]
-        pts_xformed_pred = R_pred[i] * pts3d.transpose() + t_pred[i]
-        distance = np.linalg.norm(pts_xformed_gt - pts_xformed_pred, axis=0)
-        mean_distances[i] = np.mean(distance)
 
-    threshold = diameter * percentage
-    score = (mean_distances < threshold).sum() / count
-    return score
