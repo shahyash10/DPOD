@@ -5,9 +5,9 @@ Given a RGB image, the goal is to estimate the 6D pose of an object.
 Model was trained and tested entirely on the Linemod dataset. For every 99 out of 100 images, MSCoco dataset was used to change the background of the input image for the correspondence block to prevent overfitting.
 
 <p >
-  <img src="demo1.png">
-  <img src="demo2.png">
-  <img src="demo3.png">
+  <img src="demo_results/demo1.png">
+  <img src="demo_results/demo2.png">
+  <img src="demo_results/demo3.png">
 </p>
 
 
