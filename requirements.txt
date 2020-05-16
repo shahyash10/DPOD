@@ -1,0 +1,6 @@
+numpy==1.18.1
+opencv-contrib-python==4.2.0.34
+scipy==1.4.1
+torch==1.5.0+cu101
+torchvision==0.6.0+cu101
+matplotlib==3.1.2

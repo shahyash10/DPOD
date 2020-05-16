@@ -4,7 +4,6 @@ import cv2
 import torch
 import argparse
 import numpy as np
-import pandas as pd
 import torch.nn as nn
 import torch.optim as optim
 import unet_model as UNET
@@ -157,9 +156,6 @@ for i in range(len(testing_images_idx)):
         else:  # save an empty file
             pred_pose = np.zeros((3, 4))
 
-        # if len(coord_2d):
-        #     coord_2d = torch.cat((coord_2d[0].view(
-        #         coord_2d[0].shape[0], 1), coord_2d[1].view(coord_2d[1].shape[0], 1)), 1)
         min_x = coord_2d[:, 0].min()
         max_x = coord_2d[:, 0].max()
         min_y = coord_2d[:, 1].min()
@@ -182,11 +178,6 @@ for i in range(len(testing_images_idx)):
         rendered_img = transform(torch.as_tensor(
             rendered_img, dtype=torch.float32))
 
-        # else:  # object not present in idmask prediction
-        #     obj_img = torch.zeros_like(test_img)
-        #     rendered_img = torch.zeros_like(
-        #         test_img)
-
         if len(rendered_img.shape) != 4:
             rendered_img = rendered_img.view(
                 1, rendered_img.shape[0], rendered_img.shape[1], rendered_img.shape[2])
@@ -199,6 +190,11 @@ for i in range(len(testing_images_idx)):
         # pose refinement to get final output
         xy, z, rot = pose_refiner(obj_img.float().cuda(),
                                   rendered_img.float().cuda(), pred_pose)
+        # below 2 lines are for outliers only - edge case                          
+        rot[torch.isnan(rot)] = 1  # take care of NaN and inf values
+        rot[rot == float("Inf")] = 1
+        xy[torch.isnan(xy)] = 0
+        z[torch.isnan(z)] = 0
         # convert R quarternion to rotational matrix
         rot = (R.from_quat(rot.detach().cpu().numpy())).as_matrix()
         pred_pose = pred_pose.squeeze().numpy()
@@ -220,17 +216,10 @@ for i in range(len(testing_images_idx)):
         score_card[label] += 0
 
     instances[label] += 1
-    if i % 1000 == 0:
-        print("At ",i,"iteration, current score: ",total_score/(i+1))
+
 
 print("ADD Score for all testing images is: ",
       total_score/len(testing_images_idx))
 
 
-classes = ['ape', 'benchviseblue', 'can', 'cat', 'driller', 'duck', 'glue', 'holepuncher',
-           'iron', 'lamp', 'phone', 'cam', 'eggbox']
 
-for label in classes:  # create directories to store data
-    score_card[label] = (score_card[label]/instances[label]) * 100
-
-save_obj(score_card, root_dir + "score_breakdown")

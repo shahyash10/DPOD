@@ -34,7 +34,7 @@ def visualize(array):
             plt.imshow(temp.detach().numpy(), cmap='gray')
 
 
-def create_bounding_box(img, pose, pt_cld_data, intrinsic_matrix):
+def create_bounding_box(img, pose, pt_cld_data, intrinsic_matrix,color=(0,0,255)):
     "Create a bounding box around the object"
     # 8 corner points of the ptcld data
     min_x, min_y, min_z = pt_cld_data.min(axis=0)
@@ -58,18 +58,18 @@ def create_bounding_box(img, pose, pt_cld_data, intrinsic_matrix):
     coord_2D = ((np.floor(coord_2D)).T).astype(int)
 
     # Draw lines between these 8 points
-    img = cv2.line(img, tuple(coord_2D[0]), tuple(coord_2D[1]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[0]), tuple(coord_2D[3]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[0]), tuple(coord_2D[4]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[1]), tuple(coord_2D[2]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[1]), tuple(coord_2D[5]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[2]), tuple(coord_2D[3]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[2]), tuple(coord_2D[6]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[3]), tuple(coord_2D[7]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[4]), tuple(coord_2D[7]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[4]), tuple(coord_2D[5]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[5]), tuple(coord_2D[6]), (0, 0, 255), 3)
-    img = cv2.line(img, tuple(coord_2D[6]), tuple(coord_2D[7]), (0, 0, 255), 3)
+    img = cv2.line(img, tuple(coord_2D[0]), tuple(coord_2D[1]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[0]), tuple(coord_2D[3]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[0]), tuple(coord_2D[4]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[1]), tuple(coord_2D[2]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[1]), tuple(coord_2D[5]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[2]), tuple(coord_2D[3]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[2]), tuple(coord_2D[6]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[3]), tuple(coord_2D[7]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[4]), tuple(coord_2D[7]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[4]), tuple(coord_2D[5]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[5]), tuple(coord_2D[6]), color, 3)
+    img = cv2.line(img, tuple(coord_2D[6]), tuple(coord_2D[7]), color, 3)
 
     return img
 
