@@ -1,9 +1,9 @@
 
 # [Dense Pose Object Detector](https://arxiv.org/abs/1902.11020)
 
-This repo is a recreation of the methodology for 6D pose estimation by  DPOD: 6D Pose Object Detector and Refiner ,written by Sergey Zakharov, Ivan Shugurov, Slobodan Ilic.
+This repo is a recreation of the methodology for 6D pose estimation by  DPOD: 6D Pose Object Detector and Refiner ,written by Sergey Zakharov, Ivan Shugurov, Slobodan Ilic [[1]](#references).
 Given a RGB image, the goal is to estimate the 6D pose of an object.
-Model was trained and tested entirely on the Linemod dataset. For every 99 out of 100 images, MSCoco dataset was used to change the background of the input image for the correspondence block to prevent overfitting.
+Model was trained and tested entirely on the Linemod dataset [[2]](#references). For every 99 out of 100 images, MSCoco dataset [[3]](#references) was used to change the background of the input image for the correspondence block to prevent overfitting.
 
 <p >
   <img width = 250 src="demo_results/demo1.png">
@@ -39,9 +39,9 @@ Below is a brief description of the .py files:
 
 ## Future Work
 
-1. Add additional in-plane rotations to artificially simulate new poses while training
-2. Add resnet18 as the encoder decoder architecture as described in section A.1
-3. Train and evaluate the model on synthetic data
+- [ ] Add additional in-plane rotations to artificially simulate new poses while training
+- [ ] Add resnet18 as the encoder decoder architecture as described in section A.1
+- [ ] Train and evaluate the model on synthetic data
 
 ## References
 
