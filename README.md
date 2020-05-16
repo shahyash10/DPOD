@@ -5,10 +5,11 @@ Given a RGB image, the goal is to estimate the 6D pose of an object.
 Model was trained and tested entirely on the Linemod dataset. For every 99 out of 100 images, MSCoco dataset was used to change the background of the input image for the correspondence block to prevent overfitting.
 
 <p >
-  <img width = 200 src="demo_results/demo1.png">
-  <img width = 200 src="demo_results/demo2.png">
-  <img width = 200 src="demo_results/demo3.png">
-  Green box represents the ground truth pose and red box represents predicted pose
+  <img width = 250 src="demo_results/demo1.png">
+  <img width = 250 src="demo_results/demo2.png">
+  <img width = 250 src="demo_results/demo3.png">
+  
+  Note: Green box represents the ground truth pose and red box represents predicted pose
 </p>
 
 
@@ -26,7 +27,7 @@ $ python eval.py
 
 ## Overview of the code
 
-Below is a brief description of the code:
+Below is a brief description of the .py files:
 1. create_ground_truth.py - create the grund truth ID, U and V masks and the changed background image.
 2. correspondence_block.py - trainining loop for the correspondence block base on the Unet encoder decoder architecture
 3. pose_block.py - use PnP and RANSAC for initial pose estimation
@@ -37,7 +38,7 @@ Below is a brief description of the code:
 
 ## References
 
-[1]Sergey Zakharov, Ivan Shugurov, and Slobodan Ilic. Dpod: 6d pose object detector and refiner. In Proceedings of the IEEE International Conference on Computer Vision, pages 1941–1950, 2019.
+[1] Sergey Zakharov, Ivan Shugurov, and Slobodan Ilic. Dpod: 6d pose object detector and refiner. In Proceedings of the IEEE International Conference on Computer Vision, pages 1941–1950, 2019.
 
 [2] Hinterstoisser et al. "Model based training, detection and pose estimation of texture-less 3d objects in heavily cluttered scenes" ACCV 2012.
 
