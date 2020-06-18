@@ -98,15 +98,25 @@ class UNet(nn.Module):
         self.up4_id = Up(128, 64 * factor, bilinear)
         self.outc_id = OutConv(64, out_channels_id)
 
-        #UV Mask
-        self.up1_uv = Up(1024, 512, bilinear)
-        self.up2_uv = Up(512,512,bilinear)
-        self.outc_uv1 = OutConv(256, out_channels_uv)
-        self.outc_uv2 = OutConv(256, out_channels_uv)
-        self.outc_uv3 = OutConv(256, out_channels_uv)
-        self.outc_uv4 = OutConv(256, out_channels_uv)
-        self.up3_uv = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.up4_uv = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        #U Mask
+        self.up1_u = Up(1024, 512, bilinear)
+        self.up2_u = Up(512,512,bilinear)
+        self.outc_u1 = OutConv(256, out_channels_uv)
+        self.outc_u2 = OutConv(256, out_channels_uv)
+        self.outc_u3 = OutConv(256, out_channels_uv)
+        self.outc_u4 = OutConv(256, out_channels_uv)
+        self.up3_u = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.up4_u = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+
+        #V Mask
+        self.up1_v = Up(1024, 512, bilinear)
+        self.up2_v = Up(512,512,bilinear)
+        self.outc_v1 = OutConv(256, out_channels_uv)
+        self.outc_v2 = OutConv(256, out_channels_uv)
+        self.outc_v3 = OutConv(256, out_channels_uv)
+        self.outc_v4 = OutConv(256, out_channels_uv)
+        self.up3_v = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.up4_v = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
     def forward(self, x):
         x1 = self.inc(x)
@@ -123,23 +133,23 @@ class UNet(nn.Module):
         logits_id = self.outc_id(x_id)
 
         # U mask
-        x_u = self.up1_uv(x5, x4)
-        x_u = self.up2_uv(x_u,x3)
-        x_u = self.outc_uv1(x_u)
-        x_u = self.outc_uv2(x_u)
-        x_u = self.outc_uv3(x_u)
-        x_u = self.up3_uv(x_u)
-        x_u = self.up4_uv(x_u)
-        logits_u = self.outc_uv4(x_u)
+        x_u = self.up1_u(x5, x4)
+        x_u = self.up2_u(x_u,x3)
+        x_u = self.outc_u1(x_u)
+        x_u = self.outc_u2(x_u)
+        x_u = self.outc_u3(x_u)
+        x_u = self.up3_u(x_u)
+        x_u = self.up4_u(x_u)
+        logits_u = self.outc_u4(x_u)
 
         # V mask
-        x_v = self.up1_uv(x5, x4)
-        x_v = self.up2_uv(x_v,x3)
-        x_v = self.outc_uv1(x_v)
-        x_v = self.outc_uv2(x_v)
-        x_v = self.outc_uv3(x_v)
-        x_v = self.up3_uv(x_v)
-        x_v = self.up4_uv(x_v)
-        logits_v = self.outc_uv4(x_v)
+        x_v = self.up1_v(x5, x4)
+        x_v = self.up2_v(x_v,x3)
+        x_v = self.outc_v1(x_v)
+        x_v = self.outc_v2(x_v)
+        x_v = self.outc_v3(x_v)
+        x_v = self.up3_v(x_v)
+        x_v = self.up4_v(x_v)
+        logits_v = self.outc_v4(x_v)
         
         return logits_id,logits_u, logits_v
