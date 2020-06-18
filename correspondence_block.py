@@ -38,9 +38,9 @@ def train_correspondence_block(root_dir, classes, epochs=10):
     valid_loader = torch.utils.data.DataLoader(train_data, batch_size=batch_size,
                                                sampler=valid_sampler, num_workers=num_workers)
 
-    # architecture for correspondence block
+    # architecture for correspondence block - 13 objects + backgound = 14 channels for ID masks
     correspondence_block = UNET.UNet(
-        n_channels=3, out_channels_id=16, out_channels_uv=256, bilinear=True)
+        n_channels=3, out_channels_id=14, out_channels_uv=256, bilinear=True)
     correspondence_block.cuda()
 
     # custom loss function and optimizer
