@@ -40,7 +40,6 @@ Below is a brief description of the .py files:
 
 ## Future Work
 
-- [ ] Change the correspondence block for better UV ouputs - credit: https://github.com/yshah43/DPOD/issues/4
 - [ ] Add additional in-plane rotations to artificially simulate new poses while training
 - [ ] Add resnet18 as the encoder decoder architecture as described in section A.1
 - [ ] Train and evaluate the model on Occlusion Dataset and with synthetic data
