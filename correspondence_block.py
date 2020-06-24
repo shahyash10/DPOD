@@ -53,7 +53,6 @@ def train_correspondence_block(root_dir, classes, epochs=10):
         correspondence_block.parameters(), lr=3e-4, weight_decay=3e-5)
 
     # training loop
-    # number of epochs to train the model
 
     # number of epochs to train the model
     n_epochs = epochs
