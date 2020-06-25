@@ -50,7 +50,7 @@ def create_rendering(root_dir, intrinsic_matrix, obj, idx):
 
 def create_refinement_inputs(root_dir, classes, intrinsic_matrix):
     correspondence_block = UNET.UNet(
-        n_channels=3, out_channels_id=16, out_channels_uv=256, bilinear=True)
+        n_channels=3, out_channels_id=14, out_channels_uv=256, bilinear=True)
     correspondence_block.cuda()
     correspondence_block.load_state_dict(torch.load(
         'correspondence_block.pt', map_location=torch.device('cpu')))

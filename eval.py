@@ -79,7 +79,7 @@ fy = 573.57043
 py = 242.04899  # Intrinsic Parameters of the Camera
 intrinsic_matrix = np.array([[fx, 0, px], [0, fy, py], [0, 0, 1]])
 
-correspondence_block = UNET.UNet(n_channels=3, out_channels_id=16,
+correspondence_block = UNET.UNet(n_channels=3, out_channels_id=14,
                                  out_channels_uv=256, bilinear=True)
 # load the best weights from the training loop
 correspondence_block.load_state_dict(torch.load(
