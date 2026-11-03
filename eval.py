@@ -83,11 +83,11 @@ correspondence_block = UNET.UNet(n_channels=3, out_channels_id=14,
                                  out_channels_uv=256, bilinear=True)
 # load the best weights from the training loop
 correspondence_block.load_state_dict(torch.load(
-    'correspondence_block.pt', map_location=torch.device('cpu')))
+    'correspondence_block.pt', map_location=torch.device('cpu'), weights_only=True))
 pose_refiner = Pose_Refiner()
 # load the best weights from the training loop
 pose_refiner.load_state_dict(torch.load(
-    'pose_refiner.pt', map_location=torch.device('cpu')))
+    'pose_refiner.pt', map_location=torch.device('cpu'), weights_only=True))
 
 correspondence_block.cuda()
 pose_refiner.cuda()
